@@ -3,3 +3,5 @@ test*
 settings.py
 xpaths.py
 notification.py
+.vscode
+__pycache__

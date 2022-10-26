@@ -5,6 +5,7 @@ import time
 
 from datetime import datetime
 from pathlib import Path
+from time import sleep
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -141,6 +142,58 @@ class Helper:
         condition = f"key='{key}'"
         database.select_or_insert(table="past_trade", condition=condition, data=data)
 
+    def get_past_trades_by_row_id2(self, row, is_closed: int = 0):
+        columns = row.find_elements(By.TAG_NAME, "td")
+
+        openSLAndMargin, symbol = self.get_openSLAndMargin_and_symbol(columns[0])
+
+        entryPrice = columns[2]
+        openTime = columns[3]
+        # copyTradeROI = columns[6].find_elements(By.TAG_NAME, "span")[-1]
+
+        closePrice = columns[4]
+        closeTime = columns[5]
+        copyTradeROI = columns[7]
+
+        res = {
+            "openSL": "L"
+            if openSLAndMargin.text.split(" ")[0].lower() == "long"
+            else "S",
+            "margin": openSLAndMargin.text.split(" ")[-1],
+            "symbol": symbol.text,
+            "entryPrice": entryPrice.text,
+            "closePrice": closePrice.text,
+            "openTime": openTime.text,
+            "closeTime": closeTime.text,
+            "copyTradeROI": copyTradeROI.text,
+        }
+
+        key = (
+            res["openSL"]
+            + res["symbol"]
+            + res["margin"]
+            + res["entryPrice"]
+            + res["openTime"]
+        )
+        key = self.format_key(key)
+
+        data = (key, json.dumps(res), is_closed)
+        condition = f"key='{key}'"
+        database.select_or_insert(table="past_trade", condition=condition, data=data)
+
+    def get_past_trades2(self, driver, is_closed: int = 0):
+        try:
+            ant_table_tbody = driver.find_elements(By.CLASS_NAME, "ant-table-tbody")
+            pastTrades = ant_table_tbody[1]
+            rows = pastTrades.find_elements(By.TAG_NAME, "tr")
+            for row in rows[1:]:
+                self.get_past_trades_by_row_id2(row, is_closed)
+        except Exception as e:
+            self.error_log(
+                msg=f"Failed to get_page_copy_trades\n{e}",
+                filename="helper.get_page_copy_trades.log",
+            )
+
     def get_past_trades(self, driver, is_closed: int = 0):
         logging.info("Getting past trades...")
         for i in range(1, 9):
@@ -157,7 +210,7 @@ class Helper:
         driver.switch_to.window(driver.window_handles[0])
         driver.get(traderUrl)
 
-        time.sleep(CONFIG.COPY_TRADE_WAIT_TIME_BEFORE_CRAWL)
+        sleep(CONFIG.COPY_TRADE_WAIT_TIME_BEFORE_CRAWL)
 
         # print("wait_and_find_element(driver, xpaths.COPY_TRADES)")
         # copyTrades = self.wait_and_find_element(driver, xpaths.COPY_TRADES)
@@ -168,52 +221,87 @@ class Helper:
         # print("DONE: wait_and_find_element(driver, xpaths.COPY_TRADES)")
         copyTrades.click()
 
-        time.sleep(CONFIG.COPY_TRADE_WAIT_TIME_BEFORE_CRAWL)
+        sleep(CONFIG.COPY_TRADE_WAIT_TIME_BEFORE_CRAWL)
 
         self.get_page_copy_trades(driver)
 
-        for page in range(2, 1000):
-            try:
-                # ant-pagination-item ant-pagination-item-2
-                # #rc-tabs-0-panel-orders > div > div:nth-child(1) > div.order-list-table-box > div > div > div > div > ul > li.ant-pagination-item.ant-pagination-item-3 > a
-                # #rc-tabs-0-panel-orders > div > div:nth-child(1) > div.order-list-table-box > div > div > div > div > ul > li.ant-pagination-item.ant-pagination-item-2 > a
-                # #rc-tabs-0-panel-orders > div > div:nth-child(1) > div.order-list-table-box > div > div > div > div > ul > li.ant-pagination-item.ant-pagination-item-1.ant-pagination-item-active > a
-                # page_element = self.get_element(
-                #     driver, xpaths.COPY_TRADES_PAGE_I_BTN.format(page + 1)
-                # ).click()
-                page_element = driver.find_element(
-                    By.CSS_SELECTOR,
-                    f"#rc-tabs-0-panel-orders > div > div:nth-child(1) > div.order-list-table-box > div > div > div > div > ul > li.ant-pagination-item.ant-pagination-item-{page} > a",
-                )
-                # page_element = self.wait_and_find_element(
-                #     driver, xpaths.COPY_TRADES_PAGE_I_BTN.format(page + 1)
-                # )
+        try:
+            ant_spin_container = driver.find_elements(
+                By.CLASS_NAME, "ant-spin-container"
+            )
+            currentTrades = ant_spin_container[0]
+            currentTradesPaginations = currentTrades.find_element(
+                By.TAG_NAME,
+                "ul",
+            )
 
-                # action = ActionChains(driver)
-                # action.scroll_to_element(page_element)
-                # action.perform()
-
-                page_element.click()
-
-                self.get_page_copy_trades(driver)
-            except Exception as e:
-                # logging.error(
-                #     f"#rc-tabs-0-panel-orders > div > div:nth-child(1) > div.order-list-table-box > div > div > div > div > ul > li.ant-pagination-item.ant-pagination-item-{page} > a"
-                # )
-                # logging.error(f"Failed to click on page\n{e}")
-                # time.sleep(1000)
-                break
+            currentTradesTabs = currentTradesPaginations.find_elements(
+                By.TAG_NAME, "li"
+            )
+            if len(currentTradesTabs) > 3:
+                nextBtn = currentTradesTabs[-1]
+                for tab in currentTradesTabs[2:-1]:
+                    print(f"Clicking tab: {tab.text}")
+                    try:
+                        nextBtn.click()
+                        self.get_page_copy_trades(driver)
+                    except Exception as e:
+                        print(f"Click tab failed: {tab.text}")
+        except Exception as e:
+            pass
 
     def get_page_copy_trades(self, driver):
+        try:
+            ant_table_tbody = driver.find_elements(By.CLASS_NAME, "ant-table-tbody")
+            currentTrades = ant_table_tbody[0]
+            rows = currentTrades.find_elements(By.TAG_NAME, "tr")
+            for row in rows[1:]:
+                self.parse_and_insert_row(row)
+        except Exception as e:
+            self.error_log(
+                msg=f"Failed to get_page_copy_trades\n{e}",
+                filename="helper.get_page_copy_trades.log",
+            )
 
-        for i in range(1, 9):
-            try:
-                logging.info(f"Getting copy trade row {i}")
-                self.get_row_by_id(driver, i)
+    def get_openSLAndMargin_and_symbol(self, column) -> list:
+        spans = column.find_elements(By.TAG_NAME, "span")
+        symbol = spans[0]
+        openSLAndMargin = spans[1]
+        return [openSLAndMargin, symbol]
 
-            except Exception as e:
-                print(e)
-                sleep(10)
+    def parse_and_insert_row(self, row):
+        columns = row.find_elements(By.TAG_NAME, "td")
+
+        openSLAndMargin, symbol = self.get_openSLAndMargin_and_symbol(columns[0])
+
+        entryPrice = columns[1]
+        openTime = columns[4]
+        copyTradeROI = columns[6].find_elements(By.TAG_NAME, "span")[-1]
+
+        res = {
+            "openSL": "L"
+            if openSLAndMargin.text.split(" ")[0].lower() == "long"
+            else "S",
+            "margin": openSLAndMargin.text.split(" ")[-1],
+            "symbol": symbol.text,
+            "entryPrice": entryPrice.text,
+            "openTime": openTime.text,
+            "copyTradeROI": copyTradeROI.text,
+        }
+
+        key = (
+            res["openSL"]
+            + res["symbol"]
+            + res["margin"]
+            + res["entryPrice"]
+            + res["openTime"]
+        )
+        key = self.format_key(key)
+
+        data = (key, json.dumps(res), 0, 0)
+
+        condition = f"key='{key}'"
+        database.select_or_insert(table="open_trade", condition=condition, data=data)
 
     def get_row_by_id(self, driver, rowId):
         openSLAndMargin = self.get_element(
@@ -296,7 +384,10 @@ class Helper:
                 return 0
             return float(strROI)
         except Exception as e:
-            self.error_log(f"Failed to convert ROI: {strROI}\n{e}", filename="helper.roi_to_float.log")
+            self.error_log(
+                f"Failed to convert ROI: {strROI}\n{e}",
+                filename="helper.roi_to_float.log",
+            )
             return CONFIG.ROI_TO_FOLLOW + 1
 
     def isOkToFollow(self, copyTrade: list) -> bool:
@@ -304,7 +395,9 @@ class Helper:
         try:
             openOn = datetime.strptime(copyTrade["openTime"], "%Y-%m-%d %H:%M:%S")
             isTimeOk = time.time() - openOn.timestamp() <= CONFIG.SECOND_TO_FOLLOW
-            isRoiOk = self.roi_to_float(copyTrade["copyTradeROI"]) <= CONFIG.ROI_TO_FOLLOW
+            isRoiOk = (
+                self.roi_to_float(copyTrade["copyTradeROI"]) <= CONFIG.ROI_TO_FOLLOW
+            )
 
             return isTimeOk and isRoiOk
         except Exception as e:
@@ -333,7 +426,7 @@ class Helper:
         driver.switch_to.window(driver.window_handles[2])
         self.wait_and_find_element(driver, xpaths.OPEN_TRADES_COPY_TRADING).click()
 
-        time.sleep(1)
+        sleep(1)
         copyTrades = self.get_element(driver, xpaths.OPEN_TRADE_COPY_TRADES_SUM).text
         copyTrades = copyTrades.split("(")[-1].replace(")", "").strip("\n").strip()
 
@@ -344,7 +437,7 @@ class Helper:
 
         # ActionChains(driver).scroll_from_origin(scroll_origin, 0, 50).perform()
 
-        # time.sleep(1000)
+        # sleep(1000)
 
         # for i in range(1, 10):
         #     position__table__content = driver.find_element(
@@ -361,9 +454,9 @@ class Helper:
         #         print(row.get_attribute("data-index"))
         #         spans = row.find_elements(By.TAG_NAME, "span")
         #         print(spans[-2].text)
-        #     time.sleep(1)
+        #     sleep(1)
 
-        # time.sleep(10000)
+        # sleep(10000)
         try:
             copyTrades = int(copyTrades)
             if copyTrades <= 0:
@@ -381,7 +474,7 @@ class Helper:
                         scroll_origin, 0, 60
                     ).perform()
 
-                    # time.sleep(1)
+                    # sleep(1)
 
                 spans = self.find_order_to_close(driver, i)
                 print(i, spans[-2].text)
@@ -397,7 +490,7 @@ class Helper:
         driver.switch_to.window(driver.window_handles[window_handles_for[symbol]])
         self.wait_and_find_element(driver, xpaths.OPEN_TRADES_COPY_TRADING).click()
 
-        time.sleep(1)
+        sleep(1)
         copyTrades = self.get_element(driver, xpaths.OPEN_TRADE_COPY_TRADES_SUM).text
         copyTrades = copyTrades.split("(")[-1].replace(")", "").strip("\n").strip()
 
@@ -427,7 +520,7 @@ class Helper:
                         driver, xpaths.COPY_TRADES_CLOSE_ORDER_CONFIRM
                     ).click()
                     Noti(f"Closed **{symbol}**. Order number: `{order_no}`.").send()
-                    time.sleep(0.5)
+                    sleep(0.5)
                     return
         except Exception as e:
             print(e)

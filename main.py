@@ -22,8 +22,9 @@ class ByBit:
         self.options.add_argument("--start-maximized")
 
         # setting profile
-        self.options.user_data_dir = f"{CONFIG.CHROME_PROFILE_PATH}"
-        self.options.add_argument(f"--user-data-dir={CONFIG.CHROME_PROFILE_PATH}")
+        # self.options.user_data_dir = f"{CONFIG.CHROME_PROFILE_PATH}"
+        self.options.add_argument(f"--user-data-dir={CONFIG.USER_DATA_DIR}")
+        self.options.add_argument(f"--profile-directory={CONFIG.PROFILE_DIRECTORY}")
 
         self.options.add_argument(
             "--no-first-run --no-service-autorun --password-store=basic"
@@ -50,14 +51,18 @@ class ByBit:
 
             sleep(1)
             try:
-                oc__trade_model_box = self.driver.find_element(By.CLASS_NAME, "oc__trade-model-box")
-                by_switch__item = oc__trade_model_box.find_elements(By.CLASS_NAME, "by-switch__item")
+                oc__trade_model_box = self.driver.find_element(
+                    By.CLASS_NAME, "oc__trade-model-box"
+                )
+                by_switch__item = oc__trade_model_box.find_elements(
+                    By.CLASS_NAME, "by-switch__item"
+                )
                 copyTradingButton = by_switch__item[-1]
                 copyTradingButton.click()
 
             except Exception as e:
                 print("Copy trading button not found")
-                
+
             # helper.wait_and_find_element(
             #     self.driver, xpaths.OPEN_TRADES_COPY_TRADING
             # ).click()
@@ -141,10 +146,9 @@ def main():
     # sleep(100000)
 
     try:
-        
+
         helper.get_all_copy_trades(byBit.driver)
 
-        
         helper.get_past_trades(byBit.driver, is_closed=1)
 
         byBit.make_trading()
