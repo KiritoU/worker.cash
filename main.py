@@ -49,16 +49,20 @@ class ByBit:
             #     self.driver, xpaths.OPEN_TRADES_COPY_TRADING
             # ).click()
 
-            sleep(1)
+            sleep(2)
             try:
-                oc__trade_model_box = self.driver.find_element(
-                    By.CLASS_NAME, "oc__trade-model-box"
+                # oc__trade_model_box = self.driver.find_element(
+                #     By.CLASS_NAME, "oc__trade-model-box"
+                # )
+                oc__trade_model_box = helper.wait_and_find_element(
+                    self.driver, By.CLASS_NAME, "oc__trade-model-box", 10
                 )
                 by_switch__item = oc__trade_model_box.find_elements(
                     By.CLASS_NAME, "by-switch__item"
                 )
                 copyTradingButton = by_switch__item[-1]
                 copyTradingButton.click()
+                sleep(1)
 
             except Exception as e:
                 print("Copy trading button not found")
@@ -71,10 +75,14 @@ class ByBit:
 
     def login(self):
         self.driver.get(CONFIG.LOGIN_URL)
-        loggedIn = helper.wait_and_find_element(self.driver, xpaths.LOGIN_ICON)
+        loggedIn = helper.wait_and_find_element(
+            self.driver, by_key=By.XPATH, by_value=xpaths.LOGIN_ICON
+        )
+
+        sleep(100)
         logging.info("Logged in")
 
-        # sleep(10000)
+        sleep(10000)
 
     def make_trading(self):
         currentTrades = helper.get_open_trades()
@@ -139,7 +147,17 @@ def main():
     # helper.close_orders(
     #     driver=byBit.driver, window_handles_for=byBit.window_handles_for
     # )
+    sleep(3)
+    # sleep(100000)
     # byBit.make_trading()
+    # byBit.driver.switch_to.window(byBit.driver.window_handles[1])
+    # sleep(3)
+    # order_no = OpenTrade(
+    #     byBit.driver, "BTCUSDT", byBit.window_handles_for
+    # ).get_new_order_no()
+    # print(order_no)
+    helper.close_all_orders(byBit.driver, byBit.window_handles_for)
+    sleep(100000)
 
     # helper.get_all_order(byBit.driver)
     # helper.close_all_orders(byBit.driver, byBit.window_handles_for)
@@ -149,7 +167,7 @@ def main():
 
         helper.get_all_copy_trades(byBit.driver)
 
-        helper.get_past_trades(byBit.driver, is_closed=1)
+        helper.get_past_trades2(byBit.driver, is_closed=1)
 
         byBit.make_trading()
     except Exception as e:
@@ -160,7 +178,7 @@ def main():
             helper.get_all_copy_trades(byBit.driver)
             byBit.make_trading()
 
-            helper.get_past_trades(byBit.driver)
+            helper.get_past_trades2(byBit.driver)
 
             helper.close_orders(
                 driver=byBit.driver, window_handles_for=byBit.window_handles_for

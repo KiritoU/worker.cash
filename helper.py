@@ -37,19 +37,25 @@ class Helper:
             value=XPATH,
         )
 
-    def wait_and_find_element(self, driver, XPATH: str):
-        WebDriverWait(driver, CONFIG.DRIVER_WAIT_TIME).until(
+    def wait_and_find_element(
+        self,
+        driver,
+        by_key: By = By.XPATH,
+        by_value: str = "",
+        wait_time: int = CONFIG.DRIVER_WAIT_TIME,
+    ):
+        WebDriverWait(driver, wait_time).until(
             EC.presence_of_element_located(
                 (
-                    By.XPATH,
-                    XPATH,
+                    by_key,
+                    by_value,
                 )
             )
         )
 
         return driver.find_element(
-            by=By.XPATH,
-            value=XPATH,
+            by=by_key,
+            value=by_value,
         )
 
     def format_key(self, key: str) -> str:
@@ -182,6 +188,8 @@ class Helper:
         database.select_or_insert(table="past_trade", condition=condition, data=data)
 
     def get_past_trades2(self, driver, is_closed: int = 0):
+        logging.info("Getting past trades...")
+
         try:
             ant_table_tbody = driver.find_elements(By.CLASS_NAME, "ant-table-tbody")
             pastTrades = ant_table_tbody[1]
@@ -391,7 +399,7 @@ class Helper:
             return CONFIG.ROI_TO_FOLLOW + 1
 
     def isOkToFollow(self, copyTrade: list) -> bool:
-        # return True
+        return True
         try:
             openOn = datetime.strptime(copyTrade["openTime"], "%Y-%m-%d %H:%M:%S")
             isTimeOk = time.time() - openOn.timestamp() <= CONFIG.SECOND_TO_FOLLOW
@@ -484,15 +492,44 @@ class Helper:
     def close_order_with(
         self, driver, window_handles_for: dict, symbol: str, order_no_to_close: str
     ):
+        logging.info(f"Closing order: {order_no_to_close}")
         if symbol not in CONFIG.PRICE.keys():
             return
 
         driver.switch_to.window(driver.window_handles[window_handles_for[symbol]])
-        self.wait_and_find_element(driver, xpaths.OPEN_TRADES_COPY_TRADING).click()
+        driver.get(CONFIG.OPEN_TRADE_URL + symbol)
+        # self.wait_and_find_element(driver, xpaths.OPEN_TRADES_COPY_TRADING).click()
+        sleep(2)
+        try:
+            # oc__trade_model_box = self.driver.find_element(
+            #     By.CLASS_NAME, "oc__trade-model-box"
+            # )
+            oc__trade_model_box = helper.wait_and_find_element(
+                driver, By.CLASS_NAME, "oc__trade-model-box", 10
+            )
+            by_switch__item = oc__trade_model_box.find_elements(
+                By.CLASS_NAME, "by-switch__item"
+            )
+            copyTradingButton = by_switch__item[-1]
+            copyTradingButton.click()
+            sleep(1)
+
+        except Exception as e:
+            print("Copy trading button not found")
+            return
 
         sleep(1)
-        copyTrades = self.get_element(driver, xpaths.OPEN_TRADE_COPY_TRADES_SUM).text
-        copyTrades = copyTrades.split("(")[-1].replace(")", "").strip("\n").strip()
+
+        # copyTrades = self.get_element(driver, xpaths.OPEN_TRADE_COPY_TRADES_SUM).text
+        guidance_anchor_position = driver.find_element(
+            By.ID, "guidance_anchor_position"
+        )
+        leadPositionList = guidance_anchor_position.find_element(
+            By.CLASS_NAME, "leadPositionList"
+        )
+        copyTrades = (
+            leadPositionList.text.split("(")[-1].replace(")", "").strip("\n").strip()
+        )
 
         try:
             copyTrades = int(copyTrades)
@@ -506,6 +543,7 @@ class Helper:
                         By.CLASS_NAME, "position__table__content"
                     )
                     rows = position__table__content.find_elements(By.TAG_NAME, "tr")
+
                     scroll_origin = ScrollOrigin.from_element(rows[-1])
                     ActionChains(driver).scroll_from_origin(
                         scroll_origin, 0, 60
@@ -515,10 +553,22 @@ class Helper:
 
                 order_no = spans[-2].text
                 if order_no == order_no_to_close:
+                    by_obp = driver.find_element(By.CLASS_NAME, "by-obp")
+                    btns = by_obp.find_elements(By.TAG_NAME, "button")
+                    scroll_origin = ScrollOrigin.from_element(btns[0])
+                    ActionChains(driver).scroll_from_origin(
+                        scroll_origin, 0, 600
+                    ).perform()
+
+                    sleep(1)
                     spans[-1].click()
-                    self.wait_and_find_element(
-                        driver, xpaths.COPY_TRADES_CLOSE_ORDER_CONFIRM
-                    ).click()
+                    closePosition = self.wait_and_find_element(
+                        driver, By.CLASS_NAME, "closePosition"
+                    )
+                    closePositionBtns = closePosition.find_elements(
+                        By.TAG_NAME, "button"
+                    )
+                    closePositionBtns[0].click()
                     Noti(f"Closed **{symbol}**. Order number: `{order_no}`.").send()
                     sleep(0.5)
                     return
