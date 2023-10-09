@@ -1,5 +1,5 @@
 winget install --id Git.Git -e --source winget
-winget install -e --id Python.Python.3.10 --scope machine
+echo Y | winget install -e --id Python.Python.3.10 --scope machine
 
 @echo off
 set "PATH=%PATH%;C:\Program Files\Git\bin;C:\Program Files\Python310"
