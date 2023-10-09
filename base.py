@@ -26,7 +26,7 @@ logging.basicConfig(format="%(asctime)s %(levelname)s:%(message)s", level=loggin
 from xpath import *
 
 api_key = "f5e8ab0a052afe467a849001befbb0fc"
-WAIT_FOR_CAPTCHA = 2
+WAIT_FOR_CAPTCHA = 3
 
 BROWER_TAB_AND_SEARCH_HEIGHT = 78
 API_URL = "https://worker.bunnydream.site"
@@ -254,7 +254,7 @@ class WorkerCash:
                             ):
                                 logging.info("Your view has been counted")
                                 post_viewed()
-                                break
+                                return True
                             wrapper_captcha = self.driver.find_element(
                                 by=By.ID, value="wrapper_captcha"
                             )
