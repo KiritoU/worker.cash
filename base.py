@@ -28,7 +28,7 @@ from xpath import *
 api_key = "f5e8ab0a052afe467a849001befbb0fc"
 WAIT_FOR_CAPTCHA = 2
 
-BROWER_TAB_AND_SEARCH_HEIGHT = 84
+BROWER_TAB_AND_SEARCH_HEIGHT = 78
 API_URL = "https://worker.bunnydream.site"
 
 solver = TwoCaptcha(api_key)
