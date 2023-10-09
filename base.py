@@ -29,7 +29,7 @@ api_key = "f5e8ab0a052afe467a849001befbb0fc"
 WAIT_FOR_CAPTCHA = 2
 
 BROWER_TAB_AND_SEARCH_HEIGHT = 84
-API_URL = "http://127.0.0.1:8000"
+API_URL = "https://worker.bunnydream.site"
 
 solver = TwoCaptcha(api_key)
 
