@@ -367,6 +367,9 @@ def main():
                 workercash.quit_worker()
                 sleep(10)
 
+            logging.info(f"Sleeping 30 minutes...")
+            sleep(30 * 60)
+
     sleep(1000)
 
 
