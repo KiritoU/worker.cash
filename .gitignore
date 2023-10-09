@@ -1,7 +1,10 @@
 venv
 test*
-settings.py
 xpaths.py
 notification.py
 .vscode
 __pycache__
+2solver.py
+accounts.txt
+.env
+captcha.png
