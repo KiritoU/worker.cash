@@ -9,6 +9,8 @@ import time
 import undetected_chromedriver as uc
 from PIL import Image, ImageDraw
 import pyautogui
+import environ
+
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -25,8 +27,11 @@ logging.basicConfig(format="%(asctime)s %(levelname)s:%(message)s", level=loggin
 
 from xpath import *
 
-api_key = "f5e8ab0a052afe467a849001befbb0fc"
-WAIT_FOR_CAPTCHA = 3
+env = environ.Env()
+environ.Env.read_env(".env")
+
+api_key = env("API_KEY")
+WAIT_FOR_CAPTCHA = 20
 
 BROWER_TAB_AND_SEARCH_HEIGHT = 78
 API_URL = "https://worker.bunnydream.site"
@@ -264,7 +269,7 @@ class WorkerCash:
                             waitted_time += 0.1
                             sleep(0.1)
 
-                    if not is_captured_captcha:
+                    if not is_captured_captcha or waitted_time > 5:
                         logging.error("Capture captcha failed...")
                         return True
 
@@ -368,7 +373,7 @@ def main():
                 sleep(10)
 
             logging.info(f"Sleeping 30 minutes...")
-            sleep(30 * 60)
+            sleep(random.randint(30, 60) * 60)
 
     sleep(1000)
 
