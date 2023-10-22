@@ -34,7 +34,7 @@ api_key = env("API_KEY")
 WAIT_FOR_CAPTCHA = 20
 
 BROWER_TAB_AND_SEARCH_HEIGHT = 78
-API_URL = "https://worker.bunnydream.site"
+API_URL = "https://worker.aiodream.click"
 
 solver = TwoCaptcha(api_key)
 
